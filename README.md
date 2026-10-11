@@ -32,7 +32,23 @@ npm run dev
 
 監視を1回走らせるには、devサーバ起動中に `curl http://localhost:5173/cdn-cgi/handler/scheduled` を叩く。
 
-## 初回セットアップ（Cloudflare）
+## デプロイ
+
+Cloudflareの[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/)でこのリポジトリと接続し、mainへのpushでCloudflare側がビルドとデプロイを行う。GitHub Actionsは使わない。
+
+Workers Buildsの設定:
+
+| 項目 | 値 |
+|---|---|
+| Git branch | `main` |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler d1 migrations apply uptimeflare_d1 --remote && npx wrangler deploy` |
+
+Workers Buildsが自動で作るAPIトークンにはD1の権限が無い。Deploy commandでmigrationを流すため、そのトークンに「D1 編集」を足す。
+
+公開先のホスト名は `wrangler.jsonc` の `routes`（Custom Domain）で決まり、デプロイ時に付く。今は `status.r74.tech`。
+
+### 別のアカウントに作り直すとき
 
 1. D1を作り、出力された `database_id` を `wrangler.jsonc` に書く
 
@@ -40,9 +56,8 @@ npm run dev
    npx wrangler d1 create uptimeflare_d1
    ```
 
-2. GitHubリポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録する。トークンにはWorkers ScriptsとD1の編集権限を付ける
-3. mainへpushするか、Actionsから `Deploy to Cloudflare` を手動実行する。未適用のmigrationを流してから `npm run deploy` する
-公開先のホスト名は `wrangler.jsonc` の `routes`（Custom Domain）で決まり、デプロイ時に付く。今は `status.r74.tech`。`status.scp-jp.org` へ移すときは、scp-jp.orgのゾーンがあるアカウントへD1ごと移してホスト名を差し替える。GitHub ActionsのトークンでCustom Domainを更新するのに要るゾーン側の権限は、まだ確かめていない
+2. `wrangler.jsonc` の `routes` を、そのアカウントにあるゾーンのホスト名に変える
+3. Workers Buildsでリポジトリと接続する（上の表のとおり）
 
 ## DBスキーマの変更
 
