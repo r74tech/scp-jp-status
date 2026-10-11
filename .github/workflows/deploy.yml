@@ -20,4 +20,6 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+      # 未適用のmigrationだけ流す（適用済みは d1_migrations テーブルで管理される）
+      - run: npx wrangler d1 migrations apply uptimeflare_d1 --remote
       - run: npm run deploy

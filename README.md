@@ -20,7 +20,7 @@ Cloudflare Workers 1本で動く。
 
 ```sh
 npm install
-npx wrangler d1 execute uptimeflare_d1 --local --file init.sql   # 初回のみ
+npx wrangler d1 migrations apply uptimeflare_d1 --local
 npm run dev
 ```
 
@@ -34,15 +34,18 @@ npm run dev
    npx wrangler d1 create uptimeflare_d1
    ```
 
-2. テーブルを作る
+2. GitHubリポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録する。トークンにはWorkers ScriptsとD1の編集権限を付ける
+3. mainへpushするか、Actionsから `Deploy to Cloudflare` を手動実行する。未適用のmigrationを流してから `npm run deploy` する
+4. Workerに `status.scp-jp.org` のカスタムドメインを付ける
 
-   ```sh
-   npx wrangler d1 execute uptimeflare_d1 --remote --file init.sql
-   ```
+## DBスキーマの変更
 
-3. GitHubリポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録する。トークンにはWorkers ScriptsとD1の編集権限を付ける
-4. mainへpushするか、Actionsから `Deploy to Cloudflare` を手動実行する（中身は `npm run deploy`）
-5. Workerに `status.scp-jp.org` のカスタムドメインを付ける
+`migrations/` に連番のSQLを足す。mainへのpushでデプロイ前に本番へ適用される。
+
+```sh
+npx wrangler d1 migrations create uptimeflare_d1 <変更内容>
+npx wrangler d1 migrations apply uptimeflare_d1 --local
+```
 
 ## ライセンス
 
