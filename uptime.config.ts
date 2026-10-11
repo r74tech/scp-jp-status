@@ -1,4 +1,4 @@
-// 監視対象と通知の設定。Workerだけが読み、ブラウザには配信しない
+// 監視対象の設定。Workerだけが読み、ブラウザには配信しない
 // SCP-JP/wikidotupptime（Upptime）の .upptimerc.yml から移行した。項目の型は types/config.ts の WorkerConfig
 import type { WorkerConfig } from './shared/config'
 

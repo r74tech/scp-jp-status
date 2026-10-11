@@ -49,49 +49,9 @@ export type PublicMonitor = Pick<
   'id' | 'name' | 'tooltip' | 'statusPageLink' | 'hideLatencyChart'
 >
 
-// TEnv はWorker側でのみ意味を持つ（callbacks の第1引数）。ブラウザ側の型検査では Env が無いため unknown を既定にする
-export type WorkerConfig<TEnv = unknown> = {
+export type WorkerConfig = {
   kvWriteCooldownMinutes?: number
   monitors: MonitorTarget[]
-  notification?: Notification
-  callbacks?: Callbacks<TEnv>
-}
-
-export type Notification = {
-  webhook?: WebhookConfig
-  timeZone?: string
-  gracePeriod?: number
-  skipNotificationIds?: string[]
-  skipErrorChangeNotification?: boolean
-}
-
-type SingleWebhook = {
-  url: string
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH'
-  headers?: { [key: string]: string | number }
-  payloadType: 'param' | 'json' | 'x-www-form-urlencoded'
-  payload: any
-  timeout?: number
-}
-
-export type WebhookConfig = SingleWebhook | SingleWebhook[]
-
-export type Callbacks<TEnv = unknown> = {
-  onStatusChange?: (
-    env: TEnv,
-    monitor: MonitorTarget,
-    isUp: boolean,
-    timeIncidentStart: number,
-    timeNow: number,
-    reason: string
-  ) => Promise<any> | any
-  onIncident?: (
-    env: TEnv,
-    monitor: MonitorTarget,
-    timeIncidentStart: number,
-    timeNow: number,
-    reason: string
-  ) => Promise<any> | any
 }
 
 export type IncidentRecord = {

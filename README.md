@@ -11,10 +11,10 @@ Cloudflare Workers 1本で動く。
 
 | ファイル | 中身 | 読む側 |
 |---|---|---|
-| `uptime.config.ts` | 監視対象（URL・ヘッダ・body・判定キーワード）と通知 | Workerだけ |
+| `uptime.config.ts` | 監視対象（URL・ヘッダ・body・判定キーワード） | Workerだけ |
 | `page.config.ts` | ページタイトル・リンク・グループ分け・メンテナンス告知 | Workerとブラウザ |
 
-`page.config.ts` はブラウザ向けのバンドルに入るので、認証情報や通知先を書かない。監視対象を足すときは `uptime.config.ts` の `monitors` に追記し、グループに載せるなら `page.config.ts` の `group` にもidを足す。`id` を変えると過去の履歴が引き継がれない。
+`page.config.ts` はブラウザ向けのバンドルに入るので、監視先のヘッダーやbodyを書かない。監視対象を足すときは `uptime.config.ts` の `monitors` に追記し、グループに載せるなら `page.config.ts` の `group` にもidを足す。`id` を変えると過去の履歴が引き継がれない。
 
 ## 開発
 

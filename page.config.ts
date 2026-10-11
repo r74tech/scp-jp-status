@@ -1,5 +1,5 @@
 // ステータスページの表示設定とメンテナンス情報
-// ブラウザ向けのバンドルに含まれるため、公開してよい情報だけを書く（監視先の認証情報や通知先は uptime.config.ts へ）
+// ブラウザ向けのバンドルに含まれるため、公開してよい情報だけを書く（監視先のヘッダーやbodyは uptime.config.ts へ）
 import type { MaintenanceConfig, PageConfig } from './shared/config'
 
 export const pageConfig: PageConfig = {
@@ -15,5 +15,5 @@ export const pageConfig: PageConfig = {
   favicon: 'https://scp-jp.wikidot.com/local--favicon/favicon.gif',
 }
 
-// メンテナンス中はステータスページに告知を出し、対象監視の通知を止める
+// メンテナンス告知。ステータスページと /incidents に表示する
 export const maintenances: MaintenanceConfig[] = []
