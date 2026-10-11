@@ -2,7 +2,7 @@ import { workerConfig } from '../uptime.config'
 import { doMonitor } from './monitor'
 import { getWorkerLocation } from './util'
 import { CompactedMonitorStateWrapper } from '../shared/state'
-import { getFromStore, setToStore } from './store'
+import { archiveIncident, getFromStore, setToStore } from './store'
 import { handleApi } from './api'
 import pLimit from 'p-limit'
 
@@ -66,6 +66,7 @@ export default {
           lastIncident.end = currentTimeSecond
           // write back the modified last incident
           state.setIncident(monitor.id, state.incidentLen(monitor.id) - 1, lastIncident)
+          await archiveIncident(env, monitor.id, { ...lastIncident, end: currentTimeSecond })
 
           monitorStatusChanged = true
         }

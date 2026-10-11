@@ -54,6 +54,15 @@ export type WorkerConfig = {
   monitors: MonitorTarget[]
 }
 
+// /api/incidents が返すインシデント1件。end が null なら継続中
+export type IncidentItem = {
+  monitorId: string
+  start: number
+  end: number | null
+  errors: [number, string][]
+  ref: string | null
+}
+
 export type IncidentRecord = {
   start: number[]
   end: number | null // null if it's still open

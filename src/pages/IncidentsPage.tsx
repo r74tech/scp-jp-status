@@ -1,13 +1,22 @@
-import type { MaintenanceConfig, PublicMonitor } from '@/shared/config'
+import type { IncidentItem, MaintenanceConfig, PublicMonitor } from '@/shared/config'
 import { maintenances } from '@/page.config'
 import Header from '@/src/components/Header'
-import { Box, Button, Center, Container, Group, Select } from '@mantine/core'
+import { Box, Button, Center, Container, Group, Select, Text } from '@mantine/core'
 import Footer from '@/src/components/Footer'
 import { useEffect, useState } from 'react'
 import MaintenanceAlert from '@/src/components/MaintenanceAlert'
 import NoIncidentsAlert from '@/src/components/NoIncidents'
+import IncidentAlert from '@/src/components/IncidentAlert'
 import { useTranslation } from '@/src/util/i18n'
 
+// 選択中の月（ブラウザのローカル時刻）の範囲をUNIX秒で返す
+function monthRange(monthStr: string) {
+  const [year, month] = monthStr.split('-').map(Number)
+  return {
+    from: new Date(year, month - 1, 1).getTime() / 1000,
+    to: new Date(year, month, 1).getTime() / 1000,
+  }
+}
 
 function getSelectedMonth() {
   const hash = window.location.hash.replace('#', '')
@@ -60,6 +69,30 @@ export default function IncidentsPage({ monitors }: { monitors: PublicMonitor[] 
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
+  // 監視で自動記録されたインシデント（履歴テーブル＋継続中）
+  const [incidents, setIncidents] = useState<IncidentItem[] | null>(null)
+  const [incidentsError, setIncidentsError] = useState(false)
+  useEffect(() => {
+    const { from, to } = monthRange(selectedMonth)
+    let cancelled = false
+    setIncidents(null)
+    setIncidentsError(false)
+    fetch(`/api/incidents?from=${from}&to=${to}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json() as Promise<{ incidents: IncidentItem[] }>
+      })
+      .then((data) => !cancelled && setIncidents(data.incidents))
+      .catch(() => !cancelled && setIncidentsError(true))
+    return () => {
+      cancelled = true
+    }
+  }, [selectedMonth])
+  const monitorIncidents = (incidents ?? []).filter(
+    (i) => !selectedMonitor || i.monitorId === selectedMonitor
+  )
+  const monitorName = (id: string) => monitors.find((m) => m.id === id)?.name ?? id
+
   const filteredIncidents = filterIncidentsByMonth(maintenances, selectedMonth, monitors)
   const monitorFilteredIncidents = selectedMonitor
     ? filteredIncidents.filter((i) => i.monitors.find((e) => e.id === selectedMonitor))
@@ -96,7 +129,17 @@ export default function IncidentsPage({ monitors }: { monitors: PublicMonitor[] 
               />
             </Group>
             <Box>
-              {monitorFilteredIncidents.length === 0 ? (
+              {incidentsError && <Text c="red">{t('Failed to load incidents')}</Text>}
+              {monitorIncidents.map((incident) => (
+                <IncidentAlert
+                  key={`${incident.monitorId}-${incident.start}`}
+                  incident={incident}
+                  monitorName={monitorName(incident.monitorId)}
+                />
+              ))}
+              {incidents !== null &&
+              monitorIncidents.length === 0 &&
+              monitorFilteredIncidents.length === 0 ? (
                 <NoIncidentsAlert />
               ) : (
                 monitorFilteredIncidents.map((incident, i) => (

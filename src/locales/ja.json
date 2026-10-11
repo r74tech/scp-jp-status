@@ -32,5 +32,11 @@
   "All": "すべて",
   "Select monitor": "監視対象を選択",
   "Backwards": "← 前へ",
-  "Forward": "次へ →"
+  "Forward": "次へ →",
+  "Incident ongoing": "{{name}} 停止中",
+  "Incident resolved": "{{name}} 停止",
+  "Incident period": "{{start}} 〜 {{end}}（{{duration}}）",
+  "Incident period ongoing": "{{start}} 〜 継続中（{{duration}}経過）",
+  "Original issue": "旧Upptimeのissue",
+  "Failed to load incidents": "インシデント履歴の読み込みに失敗しました"
 }

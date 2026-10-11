@@ -16,6 +16,12 @@ Cloudflare Workers 1本で動く。
 
 `page.config.ts` はブラウザ向けのバンドルに入るので、監視先のヘッダーやbodyを書かない。監視対象を足すときは `uptime.config.ts` の `monitors` に追記し、グループに載せるなら `page.config.ts` の `group` にもidを足す。`id` を変えると過去の履歴が引き継がれない。
 
+## インシデント
+
+監視が落ちたと判定した時点で自動で開き、正常に戻った時点で閉じる。閉じたものはD1の `incidents` テーブルに残り、`/incidents` で月ごとに見られる。各監視の日ごとのバー（直近90日）は状態JSONから描く。旧wikidotupptimeのissue 137件は `migrations/0003` で取り込み済み。
+
+`page.config.ts` の `maintenances` に書いたメンテナンス告知も `/incidents` に並ぶ。
+
 ## 開発
 
 ```sh
