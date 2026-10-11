@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
+    "types": ["./worker-configuration.d.ts", "vite/client"],
+    // 既存コードは拡張子なしの相対importなので、node16系ではなくbundler解決にする
+    "module": "esnext",
+    "moduleResolution": "bundler",
+  },
+  "include": ["worker", "shared", "uptime.config.ts", "page.config.ts"]
+}
