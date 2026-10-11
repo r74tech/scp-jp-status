@@ -77,15 +77,24 @@ export default function IncidentsPage({ monitors }: { monitors: PublicMonitor[] 
     let cancelled = false
     setIncidents(null)
     setIncidentsError(false)
-    fetch(`/api/incidents?from=${from}&to=${to}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ incidents: IncidentItem[] }>
-      })
-      .then((data) => !cancelled && setIncidents(data.incidents))
-      .catch(() => !cancelled && setIncidentsError(true))
+    const load = () =>
+      fetch(`/api/incidents?from=${from}&to=${to}`)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.json() as Promise<{ incidents: IncidentItem[] }>
+        })
+        .then((data) => {
+          if (cancelled) return
+          setIncidents(data.incidents)
+          setIncidentsError(false)
+        })
+        .catch(() => !cancelled && setIncidentsError(true))
+    load()
+    // 停止の発生・復旧を開いたまま反映する（cronと同じ1分間隔）
+    const timer = setInterval(load, 60_000)
     return () => {
       cancelled = true
+      clearInterval(timer)
     }
   }, [selectedMonth])
   const monitorIncidents = (incidents ?? []).filter(

@@ -4,6 +4,9 @@ import { CompactedMonitorStateWrapper } from '../shared/state'
 import { workerConfig } from '../uptime.config'
 import { getFromStore, listIncidents } from './store'
 
+// /api/incidents で1回に取れる期間。画面は1か月単位で取る
+const MAX_INCIDENT_RANGE = 32 * 24 * 60 * 60
+
 const jsonHeaders = {
   'Content-Type': 'application/json',
   'Cache-Control': 'no-store',
@@ -35,13 +38,21 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
   // インシデント履歴: 期間内に始まったもの（UNIX秒、from以上to未満）。開いているものは状態JSONから足す
   if (pathname === '/api/incidents') {
     const params = new URL(request.url).searchParams
-    const from = Number(params.get('from'))
-    const to = Number(params.get('to'))
-    if (!Number.isInteger(from) || !Number.isInteger(to) || from >= to) {
-      return new Response(JSON.stringify({ error: 'from and to must be integers (from < to)' }), {
-        status: 400,
-        headers: jsonHeaders,
-      })
+    const from = Number(params.get('from') ?? NaN)
+    const to = Number(params.get('to') ?? NaN)
+    if (
+      !Number.isInteger(from) ||
+      !Number.isInteger(to) ||
+      from >= to ||
+      to - from > MAX_INCIDENT_RANGE
+    ) {
+      return new Response(
+        JSON.stringify({ error: 'from and to are required (from < to, 32 days max)' }),
+        {
+          status: 400,
+          headers: jsonHeaders,
+        }
+      )
     }
     return new Response(JSON.stringify({ incidents: await getIncidents(env, from, to) }), {
       headers: jsonHeaders,
@@ -109,7 +120,8 @@ async function getIncidents(env: Env, from: number, to: number): Promise<Inciden
     const len = state.incidentLen(monitor.id)
     if (len === 0) continue
     const last = state.getIncident(monitor.id, len - 1)
-    if (last.end === null && last.start[0] >= from && last.start[0] < to) {
+    // 継続中は「開始〜現在」が期間と重なれば返す（月をまたいで続いている停止も当月に出す）
+    if (last.end === null && last.start[0] < to && Date.now() / 1000 >= from) {
       open.push({
         monitorId: monitor.id,
         start: last.start[0],

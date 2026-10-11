@@ -2,7 +2,12 @@ import { workerConfig } from '../uptime.config'
 import { doMonitor } from './monitor'
 import { getWorkerLocation } from './util'
 import { CompactedMonitorStateWrapper } from '../shared/state'
-import { archiveIncident, getFromStore, listMonitorIncidents, setToStore } from './store'
+import {
+  archiveIncidentStatement,
+  getFromStore,
+  listMonitorIncidents,
+  setToStoreStatement,
+} from './store'
 import { handleApi } from './api'
 import pLimit from 'p-limit'
 
@@ -21,6 +26,8 @@ export default {
     state.data.overallUp = 0
 
     let statusChanged = false
+    // 閉じたインシデントの履歴INSERT。状態JSONの保存と同じbatchで流す（閉じた監視があれば statusChanged も立つ）
+    const archives: D1PreparedStatement[] = []
     const currentTimeSecond = Math.round(Date.now() / 1000)
 
     // Parallel check multiple monitors
@@ -62,7 +69,9 @@ export default {
           lastIncident.end = currentTimeSecond
           // write back the modified last incident
           state.setIncident(monitor.id, state.incidentLen(monitor.id) - 1, lastIncident)
-          await archiveIncident(env, monitor.id, { ...lastIncident, end: currentTimeSecond })
+          archives.push(
+            archiveIncidentStatement(env, monitor.id, { ...lastIncident, end: currentTimeSecond })
+          )
 
           monitorStatusChanged = true
         }
@@ -136,7 +145,10 @@ export default {
     ) {
       console.log('Updating state...')
       state.data.lastUpdate = currentTimeSecond
-      await setToStore(env, 'state', state.getCompactedStateStr())
+      await env.UPTIMEFLARE_D1.batch([
+        ...archives,
+        setToStoreStatement(env, 'state', state.getCompactedStateStr()),
+      ])
     } else {
       console.log('Skipping state update due to cooldown period.')
     }

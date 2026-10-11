@@ -5,25 +5,23 @@ export async function getFromStore(env: Env, key: string): Promise<string | null
   return result?.value || null
 }
 
-export async function setToStore(env: Env, key: string, value: string): Promise<void> {
-  const stmt = env.UPTIMEFLARE_D1.prepare(
+export function setToStoreStatement(env: Env, key: string, value: string): D1PreparedStatement {
+  return env.UPTIMEFLARE_D1.prepare(
     'INSERT INTO uptimeflare (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value;'
-  )
-  await stmt.bind(key, value).run()
+  ).bind(key, value)
 }
 
-// 閉じたインシデントを履歴テーブル（migrations/0002）に残す。同じ監視・開始時刻は1件にまとめる
-export async function archiveIncident(
+// 閉じたインシデントを履歴テーブル（migrations/0002）に残す文。状態JSONの保存と同じbatchで実行する
+// （片方だけ成功すると、次のcronが古い「継続中」から再処理して履歴と食い違うため）
+export function archiveIncidentStatement(
   env: Env,
   monitorId: string,
   incident: { start: number[]; end: number; error: string[] }
-): Promise<void> {
+): D1PreparedStatement {
   const errors = incident.start.map((t, i) => [t, incident.error[i]])
-  await env.UPTIMEFLARE_D1.prepare(
+  return env.UPTIMEFLARE_D1.prepare(
     "INSERT OR IGNORE INTO incidents (monitor_id, start, end, errors, source) VALUES (?, ?, ?, ?, 'cron')"
-  )
-    .bind(monitorId, incident.start[0], incident.end, JSON.stringify(errors))
-    .run()
+  ).bind(monitorId, incident.start[0], incident.end, JSON.stringify(errors))
 }
 
 export type ArchivedIncident = {
@@ -35,7 +33,11 @@ export type ArchivedIncident = {
   ref: string | null
 }
 
-export async function listIncidents(env: Env, from: number, to: number): Promise<ArchivedIncident[]> {
+export async function listIncidents(
+  env: Env,
+  from: number,
+  to: number
+): Promise<ArchivedIncident[]> {
   const { results } = await env.UPTIMEFLARE_D1.prepare(
     'SELECT monitor_id, start, end, errors, source, ref FROM incidents WHERE start >= ? AND start < ? ORDER BY start DESC'
   )
