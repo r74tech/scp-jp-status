@@ -1,5 +1,5 @@
 import type { MonitorTarget } from '../shared/config'
-import { withTimeout, fetchTimeout } from './util'
+import { withTimeout } from './util'
 
 async function httpResponseBasicCheck(
   monitor: MonitorTarget,
@@ -93,34 +93,42 @@ export async function getStatus(
         headers.set('user-agent', 'UptimeFlare/1.0 (+https://github.com/lyc8503/UptimeFlare)')
       }
 
-      const response = await fetchTimeout(monitor.target, monitor.timeout || 10000, {
-        method: monitor.method,
-        headers: headers,
-        body: monitor.body,
-        cf: {
-          cacheTtlByStatus: {
-            '100-599': -1, // Don't cache any status code, from https://developers.cloudflare.com/workers/runtime-apis/request/#requestinitcfproperties
-          },
-        },
-      })
-
-      console.log(`${monitor.name} responded with ${response.status}`)
-      status.ping = Date.now() - startTime
-
-      const err = await httpResponseBasicCheck(
-        monitor,
-        response.status,
-        response.text.bind(response)
-      )
+      // タイムアウトは本文を読み終えるまで有効にする（応答ヘッダーの後に本文が止まると監視全体が終わらないため）
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), monitor.timeout || 10000)
       try {
-        await response.body?.cancel()
-      } catch (e) {} // Always try to cancel body, see issue #166
+        const response = await fetch(monitor.target, {
+          signal: controller.signal,
+          method: monitor.method,
+          headers: headers,
+          body: monitor.body,
+          cf: {
+            cacheTtlByStatus: {
+              '100-599': -1, // Don't cache any status code, from https://developers.cloudflare.com/workers/runtime-apis/request/#requestinitcfproperties
+            },
+          },
+        })
 
-      if (err !== null) {
-        console.log(`${monitor.name} didn't pass response check: ${err}`)
+        console.log(`${monitor.name} responded with ${response.status}`)
+        status.ping = Date.now() - startTime
+
+        const err = await httpResponseBasicCheck(
+          monitor,
+          response.status,
+          response.text.bind(response)
+        )
+        try {
+          await response.body?.cancel()
+        } catch (e) {} // Always try to cancel body, see issue #166
+
+        if (err !== null) {
+          console.log(`${monitor.name} didn't pass response check: ${err}`)
+        }
+        status.up = err === null
+        status.err = err ?? ''
+      } finally {
+        clearTimeout(timer)
       }
-      status.up = err === null
-      status.err = err ?? ''
     } catch (e: any) {
       console.log(`${monitor.name} errored with ${e.name}: ${e.message}`)
       if (e.name === 'AbortError') {
@@ -139,7 +147,9 @@ export async function getStatus(
 
 export async function doMonitor(monitor: MonitorTarget, location: string) {
   const status = await getStatus(monitor)
-  console.log(`[${monitor.id}] Check result from ${location}: up=${status.up}, ping=${status.ping}, err=${status.err}`)
+  console.log(
+    `[${monitor.id}] Check result from ${location}: up=${status.up}, ping=${status.ping}, err=${status.err}`
+  )
 
   return {
     location,

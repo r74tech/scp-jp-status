@@ -50,6 +50,11 @@ async function getSummary(env: Env): Promise<Response> {
 
   const monitors: Record<string, unknown> = {}
   for (const monitor of workerConfig.monitors) {
+    // 追加直後でまだcronが1回も記録していない監視
+    if (state.incidentLen(monitor.id) === 0) {
+      monitors[monitor.id] = { up: null, latency: null, location: null, message: 'No data yet' }
+      continue
+    }
     const lastIncident = state.getIncident(monitor.id, state.incidentLen(monitor.id) - 1)
     const isUp = lastIncident?.end !== null
     const latency = state.getLastLatency(monitor.id)
