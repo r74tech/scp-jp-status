@@ -43,3 +43,17 @@ export async function listIncidents(env: Env, from: number, to: number): Promise
     .all<ArchivedIncident>()
   return results
 }
+
+// 指定時刻以降に終わったインシデントを古い順に返す
+export async function listMonitorIncidents(
+  env: Env,
+  monitorId: string,
+  endedAfter: number
+): Promise<ArchivedIncident[]> {
+  const { results } = await env.UPTIMEFLARE_D1.prepare(
+    'SELECT monitor_id, start, end, errors, source, ref FROM incidents WHERE monitor_id = ? AND end >= ? ORDER BY start ASC'
+  )
+    .bind(monitorId, endedAfter)
+    .all<ArchivedIncident>()
+  return results
+}

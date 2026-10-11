@@ -2,7 +2,7 @@ import { workerConfig } from '../uptime.config'
 import { doMonitor } from './monitor'
 import { getWorkerLocation } from './util'
 import { CompactedMonitorStateWrapper } from '../shared/state'
-import { archiveIncident, getFromStore, setToStore } from './store'
+import { archiveIncident, getFromStore, listMonitorIncidents, setToStore } from './store'
 import { handleApi } from './api'
 import pLimit from 'p-limit'
 
@@ -47,13 +47,9 @@ export default {
       status.up ? state.data.overallUp++ : state.data.overallDown++
 
       // Update incidents
-      // Create a dummy incident to store the start time of the monitoring and simplify logic
+      // 初回（状態JSONにこの監視が無い）は監視開始時刻と直近90日の停止記録を履歴テーブルから作る
       if (state.incidentLen(monitor.id) === 0) {
-        state.appendIncident(monitor.id, {
-          start: [currentTimeSecond],
-          end: currentTimeSecond,
-          error: ['dummy'],
-        })
+        await seedIncidents(env, state, monitor.id, currentTimeSecond)
       }
 
       // Then lastIncident here must not be null
@@ -146,3 +142,34 @@ export default {
     }
   },
 } satisfies ExportedHandler<Env>
+
+const NINETY_DAYS = 90 * 24 * 60 * 60
+
+// 状態JSONに監視を初めて載せるときの初期化。先頭のdummyインシデントの時刻が監視開始時刻になり、
+// 日ごとの稼働率バーはそれ以降を「監視時間 − 停止時間」で計算する
+// 履歴テーブルに記録がある監視（旧Upptimeから引き継いだもの等）は90日前から監視していた扱いにして停止記録を載せる。
+// 記録が無い監視は今から監視開始
+async function seedIncidents(
+  env: Env,
+  state: CompactedMonitorStateWrapper,
+  monitorId: string,
+  now: number
+): Promise<void> {
+  const rows = await listMonitorIncidents(env, monitorId, now - NINETY_DAYS)
+  if (rows.length === 0) {
+    state.appendIncident(monitorId, { start: [now], end: now, error: ['dummy'] })
+    return
+  }
+
+  const since = Math.min(now - NINETY_DAYS, rows[0].start)
+  state.appendIncident(monitorId, { start: [since], end: since, error: ['dummy'] })
+  for (const row of rows) {
+    const errors: [number, string][] = JSON.parse(row.errors)
+    state.appendIncident(monitorId, {
+      start: errors.map(([t]) => t),
+      end: row.end,
+      error: errors.map(([, e]) => e),
+    })
+  }
+  console.log(`[${monitorId}] seeded ${rows.length} incidents from history since ${since}`)
+}
