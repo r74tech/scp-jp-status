@@ -1,5 +1,5 @@
 /**
- * 監視Worker兼ステータスページ。cronで毎分監視してD1に保存し、同じWorkerがSPAと /api/* を配信する
+ * 監視Worker兼ステータスページ。cronで10分ごとに監視してD1に保存し、同じWorkerがSPAと /api/* を配信する
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
@@ -13,7 +13,7 @@
 		"run_worker_first": ["/api/*"]
 	},
 	"triggers": {
-		"crons": ["* * * * *"]
+		"crons": ["*/10 * * * *"]
 	},
 	"d1_databases": [
 		{

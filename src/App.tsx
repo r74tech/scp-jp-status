@@ -6,8 +6,8 @@ import IncidentsPage from '@/src/pages/IncidentsPage'
 
 type StatusResponse = { state: string | null; monitors: PublicMonitor[] }
 
-// 1分ごとにcronが状態を更新するので、表示側も同じ間隔で取り直す
-const REFRESH_MS = 60_000
+// cronは10分ごとに状態を更新する。表示側は5分ごとに取り直し、更新後の反映遅れを抑える
+const REFRESH_MS = 5 * 60_000
 
 export default function App() {
   const [data, setData] = useState<StatusResponse | null>(null)

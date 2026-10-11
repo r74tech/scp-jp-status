@@ -90,8 +90,8 @@ export default function IncidentsPage({ monitors }: { monitors: PublicMonitor[] 
         })
         .catch(() => !cancelled && setIncidentsError(true))
     load()
-    // 停止の発生・復旧を開いたまま反映する（cronと同じ1分間隔）
-    const timer = setInterval(load, 60_000)
+    // 停止の発生・復旧を開いたまま反映する（cronは10分ごと、取り直しは5分ごと）
+    const timer = setInterval(load, 5 * 60_000)
     return () => {
       cancelled = true
       clearInterval(timer)

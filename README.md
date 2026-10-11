@@ -1,10 +1,10 @@
 # SCP-JP 死活監視
 
-SCP-JPのWikidotサイト群を毎分監視し、ステータスページを公開する。旧[SCP-JP/wikidotupptime](https://github.com/SCP-JP/wikidotupptime)（Upptime）の置き換え。
+SCP-JPのWikidotサイト群を10分ごとに監視し、ステータスページを公開する。旧[SCP-JP/wikidotupptime](https://github.com/SCP-JP/wikidotupptime)（Upptime）の置き換え。
 
 Cloudflare Workers 1本で動く。
 
-- cronで毎分監視し、結果をD1に保存する（`worker/index.ts`）
+- cronで10分ごとに監視し、結果をD1に保存する（`worker/index.ts`）
 - 同じWorkerが `/api/*` に応答し（`worker/api.ts`）、それ以外はViteでビルドしたSPA（`src/`）を配信する
 
 ## 設定ファイル
