@@ -12,6 +12,8 @@
 		"not_found_handling": "single-page-application",
 		"run_worker_first": ["/api/*"]
 	},
+	// 当面は個人アカウント（r74.tech）で公開する。scp-jp.org へ移すときはこのホスト名を差し替える
+	"routes": [{ "pattern": "status.r74.tech", "custom_domain": true }],
 	"triggers": {
 		"crons": ["*/10 * * * *"]
 	},
@@ -19,8 +21,7 @@
 		{
 			"binding": "UPTIMEFLARE_D1",
 			"database_name": "uptimeflare_d1",
-			// 初回セットアップ（README）で作ったD1のIDに置き換える
-			"database_id": "00000000-0000-0000-0000-000000000000"
+			"database_id": "46a82e85-6ede-4030-b36d-4c2031bb26ec"
 		}
 	],
 	"observability": {
