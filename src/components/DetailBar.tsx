@@ -4,8 +4,6 @@ import { Box, Tooltip, Modal } from '@mantine/core'
 import { useResizeObserver } from '@mantine/hooks'
 import { useState } from 'react'
 import { useTranslation } from '@/src/util/i18n'
-import moment from 'moment'
-import 'moment-precise-range-plugin'
 
 export default function DetailBar({
   monitor,
@@ -93,7 +91,7 @@ export default function DetailBar({
               {dayDownTime > 0 && (
                 <div>
                   {t('Down for', {
-                    duration: moment.preciseDiff(moment(0), moment(dayDownTime * 1000)),
+                    duration: formatDuration(dayDownTime),
                   })}
                 </div>
               )}
@@ -157,4 +155,12 @@ export default function DetailBar({
       </Box>
     </>
   )
+}
+
+// 秒数を「1時間5分3秒」の形にする。停止時間は1日単位で集計するので時・分・秒で足りる
+function formatDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600)
+  const m = Math.floor((totalSeconds % 3600) / 60)
+  const s = Math.round(totalSeconds % 60)
+  return [h && `${h}時間`, m && `${m}分`, s && `${s}秒`].filter(Boolean).join('') || '0秒'
 }
