@@ -42,7 +42,7 @@ npm run dev
 
 2. GitHubリポジトリのSecretsに `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録する。トークンにはWorkers ScriptsとD1の編集権限を付ける
 3. mainへpushするか、Actionsから `Deploy to Cloudflare` を手動実行する。未適用のmigrationを流してから `npm run deploy` する
-4. Workerに `status.scp-jp.org` のカスタムドメインを付ける
+公開先のホスト名は `wrangler.jsonc` の `routes`（Custom Domain）で決まり、デプロイ時に付く。今は `status.r74.tech`。`status.scp-jp.org` へ移すときは、scp-jp.orgのゾーンがあるアカウントへD1ごと移してホスト名を差し替える。GitHub ActionsのトークンでCustom Domainを更新するのに要るゾーン側の権限は、まだ確かめていない
 
 ## DBスキーマの変更
 
