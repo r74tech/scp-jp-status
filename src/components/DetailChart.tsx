@@ -11,6 +11,8 @@ import {
   TimeScale,
 } from 'chart.js'
 import 'chartjs-adapter-moment'
+import { useState } from 'react'
+import { Group, SegmentedControl, Text } from '@mantine/core'
 import type { MonitorState, PublicMonitor } from '@/shared/config'
 import { codeToCountry } from '@/src/util/iata'
 import { useTranslation } from '@/src/util/i18n'
@@ -26,6 +28,14 @@ ChartJS.register(
   TimeScale
 )
 
+// 表示期間（秒）。最長はworker/index.tsのLATENCY_RETENTIONに合わせる
+const RANGES = [
+  { label: '12時間', value: String(12 * 60 * 60) },
+  { label: '1日', value: String(24 * 60 * 60) },
+  { label: '3日', value: String(3 * 24 * 60 * 60) },
+  { label: '1週間', value: String(7 * 24 * 60 * 60) },
+]
+
 export default function DetailChart({
   monitor,
   state,
@@ -34,11 +44,17 @@ export default function DetailChart({
   state: MonitorState
 }) {
   const { t } = useTranslation('common')
-  const latencyData = state.latency[monitor.id].map((point) => ({
-    x: point.time * 1000,
-    y: point.ping,
-    loc: point.loc,
-  }))
+  const [range, setRange] = useState(RANGES[0].value)
+  // 横軸は選んだ期間の全体を取る。保存期間を延ばした直後など、データが期間に満たないときも軸の幅を揃えるため
+  const xMax = Date.now()
+  const xMin = xMax - Number(range) * 1000
+  const latencyData = state.latency[monitor.id]
+    .filter((point) => point.time * 1000 >= xMin)
+    .map((point) => ({
+      x: point.time * 1000,
+      y: point.ping,
+      loc: point.loc,
+    }))
 
   let data = {
     datasets: [
@@ -76,15 +92,12 @@ export default function DetailChart({
       legend: {
         display: false,
       },
-      title: {
-        display: true,
-        text: t('Response times'),
-        align: 'start' as const,
-      },
     },
     scales: {
       x: {
         type: 'time' as const,
+        min: xMin,
+        max: xMax,
         ticks: {
           source: 'auto' as const,
           maxRotation: 0,
@@ -95,8 +108,16 @@ export default function DetailChart({
   }
 
   return (
-    <div style={{ height: '150px' }}>
-      <Line options={options} data={data} />
-    </div>
+    <>
+      <Group justify="space-between" mt="xs">
+        <Text size="xs" fw={600} c="dimmed">
+          {t('Response times')}
+        </Text>
+        <SegmentedControl size="xs" data={RANGES} value={range} onChange={setRange} />
+      </Group>
+      <div style={{ height: '150px' }}>
+        <Line options={options} data={data} />
+      </div>
+    </>
   )
 }

@@ -103,8 +103,8 @@ export default {
         time: currentTimeSecond,
       })
 
-      // discard old data
-      while (state.getFirstLatency(monitor.id).time < currentTimeSecond - 12 * 60 * 60) {
+      // 応答時間は画面のグラフで選べる最長期間（1週間）だけ残す
+      while (state.getFirstLatency(monitor.id).time < currentTimeSecond - LATENCY_RETENTION) {
         state.unshiftLatency(monitor.id)
       }
 
@@ -156,6 +156,7 @@ export default {
 } satisfies ExportedHandler<Env>
 
 const NINETY_DAYS = 90 * 24 * 60 * 60
+const LATENCY_RETENTION = 7 * 24 * 60 * 60
 
 // 状態JSONに監視を初めて載せるときの初期化。先頭のdummyインシデントの時刻が監視開始時刻になり、
 // 日ごとの稼働率バーはそれ以降を「監視時間 − 停止時間」で計算する
