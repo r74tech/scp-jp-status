@@ -35,7 +35,7 @@ export async function handleApi(request: Request, env: Env): Promise<Response> {
     })
   }
 
-  // インシデント履歴: 期間内に始まったもの（UNIX秒、from以上to未満）。開いているものは状態JSONから足す
+  // インシデント履歴: 期間（UNIX秒、from以上to未満）と重なるもの。月をまたいだ停止は両方の月に出る。開いているものは状態JSONから足す
   if (pathname === '/api/incidents') {
     const params = new URL(request.url).searchParams
     const from = Number(params.get('from') ?? NaN)

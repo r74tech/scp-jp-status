@@ -1,13 +1,17 @@
 import type { IncidentItem, MaintenanceConfig, PublicMonitor } from '@/shared/config'
 import { maintenances } from '@/page.config'
 import Header from '@/src/components/Header'
-import { Box, Button, Center, Container, Group, Select, Text } from '@mantine/core'
+import { Box, Button, Center, Container, Group, Loader, Paper, Select, Text } from '@mantine/core'
 import Footer from '@/src/components/Footer'
 import { useEffect, useState } from 'react'
 import MaintenanceAlert from '@/src/components/MaintenanceAlert'
-import NoIncidentsAlert from '@/src/components/NoIncidents'
-import IncidentAlert from '@/src/components/IncidentAlert'
+import IncidentList from '@/src/components/IncidentList'
+import { groupOverlapping } from '@/src/util/incidents'
+import { formatDurationMinutes } from '@/src/util/duration'
 import { useTranslation } from '@/src/util/i18n'
+
+const toMonthStr = (date: Date) =>
+  date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
 
 // 選択中の月（ブラウザのローカル時刻）の範囲をUNIX秒で返す
 function monthRange(monthStr: string) {
@@ -20,24 +24,17 @@ function monthRange(monthStr: string) {
 
 function getSelectedMonth() {
   const hash = window.location.hash.replace('#', '')
-  if (!hash) {
-    const now = new Date()
-    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-  }
+  if (!hash) return toMonthStr(new Date())
   return hash.split('-').splice(0, 2).join('-')
 }
 
-function filterIncidentsByMonth(
-  incidents: MaintenanceConfig[],
+function filterMaintenancesByMonth(
+  items: MaintenanceConfig[],
   monthStr: string,
   monitors: PublicMonitor[]
 ): (Omit<MaintenanceConfig, 'monitors'> & { monitors: PublicMonitor[] })[] {
-  return incidents
-    .filter((incident) => {
-      const d = new Date(incident.start)
-      const incidentMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
-      return incidentMonth === monthStr
-    })
+  return items
+    .filter((item) => toMonthStr(new Date(item.start)) === monthStr)
     .map((e) => ({
       ...e,
       monitors: (e.monitors || []).map((e) => monitors.find((mon) => mon.id === e)!),
@@ -47,14 +44,9 @@ function filterIncidentsByMonth(
 
 function getPrevNextMonth(monthStr: string) {
   const [year, month] = monthStr.split('-').map(Number)
-  const date = new Date(year, month - 1)
-  const prev = new Date(date)
-  prev.setMonth(prev.getMonth() - 1)
-  const next = new Date(date)
-  next.setMonth(next.getMonth() + 1)
   return {
-    prev: prev.getFullYear() + '-' + String(prev.getMonth() + 1).padStart(2, '0'),
-    next: next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0'),
+    prev: toMonthStr(new Date(year, month - 2)),
+    next: toMonthStr(new Date(year, month)),
   }
 }
 
@@ -97,76 +89,93 @@ export default function IncidentsPage({ monitors }: { monitors: PublicMonitor[] 
       clearInterval(timer)
     }
   }, [selectedMonth])
-  const monitorIncidents = (incidents ?? []).filter(
-    (i) => !selectedMonitor || i.monitorId === selectedMonitor
-  )
-  const monitorName = (id: string) => monitors.find((m) => m.id === id)?.name ?? id
 
-  const filteredIncidents = filterIncidentsByMonth(maintenances, selectedMonth, monitors)
-  const monitorFilteredIncidents = selectedMonitor
-    ? filteredIncidents.filter((i) => i.monitors.find((e) => e.id === selectedMonitor))
-    : filteredIncidents
+  const now = Math.floor(Date.now() / 1000)
+  const monitorName = (id: string) => monitors.find((m) => m.id === id)?.name ?? id
+  const groups = groupOverlapping(
+    (incidents ?? []).filter((i) => !selectedMonitor || i.monitorId === selectedMonitor),
+    now
+  )
+  // 月の合計は選択月の範囲に切って数える（前月から続いている停止や、継続中の停止の未来分を含めない）
+  const { from: monthFrom, to: monthTo } = monthRange(selectedMonth)
+  const totalDown = groups.reduce(
+    (sum, g) =>
+      sum + Math.max(0, Math.min(g.end ?? now, monthTo, now) - Math.max(g.start, monthFrom)),
+    0
+  )
+
+  const monthMaintenances = filterMaintenancesByMonth(maintenances, selectedMonth, monitors).filter(
+    (m) => !selectedMonitor || m.monitors.find((e) => e?.id === selectedMonitor)
+  )
 
   const { prev, next } = getPrevNextMonth(selectedMonth)
+  const [year, month] = selectedMonth.split('-').map(Number)
+  const isCurrentOrLater = selectedMonth >= toMonthStr(new Date())
 
   const monitorOptions = [
     { value: '', label: t('All') },
-    ...monitors.map((monitor) => ({
-      value: monitor.id,
-      label: monitor.name,
-    })),
+    ...monitors.map((monitor) => ({ value: monitor.id, label: monitor.name })),
   ]
 
   return (
     <>
       <main>
-        <Header
-          style={{
-            marginBottom: '40px',
-          }}
-        />
+        <Header style={{ marginBottom: '40px' }} />
         <Center>
           <Container size="md" style={{ width: '100%' }}>
-            <Group justify="end" mb="md">
+            <Group justify="space-between" mb="sm">
+              <Button variant="default" onClick={() => (window.location.hash = prev)}>
+                {t('Backwards')}
+              </Button>
+              <Text fw={600} size="lg">
+                {t('Month label', { year, month })}
+              </Text>
+              <Button
+                variant="default"
+                disabled={isCurrentOrLater}
+                onClick={() => (window.location.hash = next)}
+              >
+                {t('Forward')}
+              </Button>
+            </Group>
+            <Group justify="space-between" mb="lg" wrap="wrap">
+              <Text size="sm" c="dimmed">
+                {incidents !== null &&
+                  groups.length > 0 &&
+                  t('Month summary', {
+                    count: groups.length,
+                    duration: formatDurationMinutes(totalDown),
+                  })}
+              </Text>
               <Select
                 placeholder={t('Select monitor')}
                 data={monitorOptions}
                 value={selectedMonitor}
                 onChange={setSelectedMonitor}
                 clearable
-                style={{ maxWidth: 300, float: 'right' }}
+                style={{ width: 300, maxWidth: '100%' }}
               />
             </Group>
             <Box>
-              {incidentsError && <Text c="red">{t('Failed to load incidents')}</Text>}
-              {monitorIncidents.map((incident) => (
-                <IncidentAlert
-                  key={`${incident.monitorId}-${incident.start}`}
-                  incident={incident}
-                  monitorName={monitorName(incident.monitorId)}
-                />
+              {monthMaintenances.map((maintenance, i) => (
+                <MaintenanceAlert key={i} maintenance={maintenance} style={{ marginBottom: 16 }} />
               ))}
-              {incidents !== null &&
-              monitorIncidents.length === 0 &&
-              monitorFilteredIncidents.length === 0 ? (
-                <NoIncidentsAlert />
+              {incidentsError ? (
+                <Text c="red">{t('Failed to load incidents')}</Text>
+              ) : incidents === null ? (
+                <Center py="xl">
+                  <Loader size="sm" />
+                </Center>
+              ) : groups.length > 0 ? (
+                <IncidentList groups={groups} now={now} monitorName={monitorName} />
               ) : (
-                monitorFilteredIncidents.map((incident, i) => (
-                  <MaintenanceAlert key={i} maintenance={incident} />
-                ))
+                monthMaintenances.length === 0 && (
+                  <Paper withBorder radius="md" p="md">
+                    <Text c="dimmed">{t('No incidents in this month')}</Text>
+                  </Paper>
+                )
               )}
             </Box>
-            <Group justify="space-between" mt="md">
-              <Button variant="default" onClick={() => (window.location.hash = prev)}>
-                {t('Backwards')}
-              </Button>
-              <Box style={{ alignSelf: 'center', fontWeight: 500, fontSize: 18 }}>
-                {selectedMonth}
-              </Box>
-              <Button variant="default" onClick={() => (window.location.hash = next)}>
-                {t('Forward')}
-              </Button>
-            </Group>
           </Container>
         </Center>
         <Footer />

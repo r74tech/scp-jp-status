@@ -39,9 +39,9 @@ export async function listIncidents(
   to: number
 ): Promise<ArchivedIncident[]> {
   const { results } = await env.UPTIMEFLARE_D1.prepare(
-    'SELECT monitor_id, start, end, errors, source, ref FROM incidents WHERE start >= ? AND start < ? ORDER BY start DESC'
+    'SELECT monitor_id, start, end, errors, source, ref FROM incidents WHERE start < ? AND end > ? ORDER BY start DESC'
   )
-    .bind(from, to)
+    .bind(to, from)
     .all<ArchivedIncident>()
   return results
 }
