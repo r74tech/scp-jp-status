@@ -1,29 +1,15 @@
 import { Anchor, Box, Divider, Group, Paper, Stack, Text } from '@mantine/core'
 import { Fragment } from 'react'
 import type { IncidentGroup } from '@/src/util/incidents'
-import { errorsWithMonitors } from '@/src/util/incidents'
+import {
+  dayKey,
+  errorsWithMonitors,
+  formatClock,
+  formatDay,
+  formatEnd,
+} from '@/src/util/incidents'
 import { formatDurationMinutes } from '@/src/util/duration'
 import { useTranslation } from '@/src/util/i18n'
-
-const dayKey = (sec: number) => new Date(sec * 1000).toDateString()
-const formatDay = (sec: number) =>
-  new Date(sec * 1000).toLocaleDateString('ja-JP', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  })
-const formatClock = (sec: number) =>
-  new Date(sec * 1000).toLocaleTimeString('ja-JP', { hour: 'numeric', minute: '2-digit' })
-// 開始日と違う日に終わったときだけ日付を付ける
-const formatEnd = (start: number, end: number) =>
-  dayKey(start) === dayKey(end)
-    ? formatClock(end)
-    : new Date(end * 1000).toLocaleString('ja-JP', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
 
 function IncidentRow({
   group,

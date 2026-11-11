@@ -1,10 +1,14 @@
 import type { MonitorState, PublicMonitor } from '@/shared/config'
 import { getColor } from '@/src/util/color'
-import { Box, Tooltip, Modal } from '@mantine/core'
+import { Box, Tooltip, Modal, Group, Stack, Text } from '@mantine/core'
 import { useResizeObserver } from '@mantine/hooks'
 import { useState } from 'react'
 import { useTranslation } from '@/src/util/i18n'
-import { formatDuration } from '@/src/util/duration'
+import { formatDurationMinutes } from '@/src/util/duration'
+import { describeError, formatClock, formatDay, formatEnd } from '@/src/util/incidents'
+
+// その日に重なる停止の区間。エラー文が途中で変わった停止は区間ごとに分かれる
+type DayPart = { start: number; end: number; ongoing: boolean; error: string }
 
 export default function DetailBar({
   monitor,
@@ -38,7 +42,7 @@ export default function DetailBar({
     const dayMonitorTime = overlapLen(dayStart, dayEnd, montiorStartTime, currentTime)
     let dayDownTime = 0
 
-    let incidentReasons: string[] = []
+    const dayParts: DayPart[] = []
 
     for (let incident of state.incident[monitor.id]) {
       const incidentStart = incident.start[0]
@@ -50,22 +54,19 @@ export default function DetailBar({
       // Incident history for the day
       if (overlap > 0) {
         for (let i = 0; i < incident.error.length; i++) {
+          const isLast = i === incident.error.length - 1
           let partStart = incident.start[i]
-          let partEnd =
-            i === incident.error.length - 1 ? incident.end ?? currentTime : incident.start[i + 1]
+          let partEnd = isLast ? incident.end ?? currentTime : incident.start[i + 1]
           partStart = Math.max(partStart, dayStart)
           partEnd = Math.min(partEnd, dayEnd)
 
           if (overlapLen(dayStart, dayEnd, partStart, partEnd) > 0) {
-            const startStr = new Date(partStart * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
+            dayParts.push({
+              start: partStart,
+              end: partEnd,
+              ongoing: isLast && incident.end === null && partEnd === currentTime,
+              error: incident.error[i],
             })
-            const endStr = new Date(partEnd * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-            incidentReasons.push(`[${startStr}-${endStr}] ${incident.error[i]}`)
           }
         }
       }
@@ -92,7 +93,7 @@ export default function DetailBar({
               {dayDownTime > 0 && (
                 <div>
                   {t('Down for', {
-                    duration: formatDuration(dayDownTime),
+                    duration: formatDurationMinutes(dayDownTime),
                   })}
                 </div>
               )}
@@ -114,15 +115,35 @@ export default function DetailBar({
               setModalTitle(
                 t('incidents at', {
                   name: monitor.name,
-                  date: new Date(dayStart * 1000).toLocaleDateString(),
+                  date: formatDay(dayStart, true),
                 })
               )
               setModelContent(
-                <>
-                  {incidentReasons.map((reason, index) => (
-                    <div key={index}>{reason}</div>
+                <Stack gap={6}>
+                  {dayParts.map((part, index) => (
+                    <Group key={index} gap="md" wrap="nowrap" align="baseline">
+                      <Text size="sm" fw={600} w={120} style={{ flexShrink: 0 }}>
+                        {formatClock(part.start)} 〜{' '}
+                        {part.ongoing ? '' : formatEnd(part.start, part.end)}
+                      </Text>
+                      <Text
+                        size="sm"
+                        c={part.ongoing ? 'red' : 'dimmed'}
+                        w={part.ongoing ? undefined : 70}
+                        style={{ flexShrink: 0 }}
+                      >
+                        {part.ongoing
+                          ? t('Incident ongoing for', {
+                              duration: formatDurationMinutes(part.end - part.start),
+                            })
+                          : formatDurationMinutes(part.end - part.start)}
+                      </Text>
+                      <Text size="sm" title={part.error}>
+                        {describeError(part.error)}
+                      </Text>
+                    </Group>
                   ))}
-                </>
+                </Stack>
               )
               setModalOpened(true)
             }

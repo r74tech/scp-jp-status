@@ -14,7 +14,7 @@
   "No Data": "データなし",
   "percent at date": "{{date}}: {{percent}}%",
   "Down for": "{{duration}}停止（クリックで詳細）",
-  "incidents at": "🚨 {{date}}の{{name}}のインシデント",
+  "incidents at": "{{date}} {{name}}の停止",
   "Response times": "応答時間(ms)",
   "Upcoming": "[予定] ",
   "Scheduled Maintenance": "定期メンテナンス",

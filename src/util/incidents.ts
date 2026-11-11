@@ -1,5 +1,27 @@
 import type { IncidentItem } from '@/shared/config'
 
+// 時刻の表示（UNIX秒、ブラウザのローカル時刻）
+export const dayKey = (sec: number) => new Date(sec * 1000).toDateString()
+export const formatDay = (sec: number, withYear = false) =>
+  new Date(sec * 1000).toLocaleDateString('ja-JP', {
+    year: withYear ? 'numeric' : undefined,
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  })
+export const formatClock = (sec: number) =>
+  new Date(sec * 1000).toLocaleTimeString('ja-JP', { hour: 'numeric', minute: '2-digit' })
+// 開始日と違う日に終わったときだけ日付を付ける
+export const formatEnd = (start: number, end: number) =>
+  dayKey(start) === dayKey(end)
+    ? formatClock(end)
+    : new Date(end * 1000).toLocaleString('ja-JP', {
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+
 // 期間が重なるインシデントのまとまり。同じ時間帯に落ちた複数の監視を1行で見せる
 export type IncidentGroup = {
   start: number
